@@ -10,8 +10,8 @@
 static void test_memcpy_avx();
 static void test_memcpy_sse();
 
-template <const char *Label, size_t BlockSize, size_t Start, size_t End, bool Remainder>
-static void iterate_sizes(void *(*copyfn)(void *, void *, size_t))
+template <const char *Label, size_t BlockSize, size_t Start, size_t End, bool Remainder = false>
+static void iterate_sizes(void (*copyfn)(void *, void *, size_t))
 {
     constexpr size_t ArraySize = (Start * BlockSize) + ((Remainder) ? (BlockSize / 2) : 0);
     std::array<uint8_t, ArraySize> input;
@@ -20,6 +20,8 @@ static void iterate_sizes(void *(*copyfn)(void *, void *, size_t))
 
     input.fill(1);
     input.fill(0);
+
+    copyfn(output.data(), input.data(), ArraySize);
 
     if constexpr (!Remainder)
     {
@@ -71,9 +73,10 @@ int main(int argc, const char **argv)
 
 void test_memcpy_avx()
 {
-    memcpy_avx(NULL, NULL, 0);
+    iterate_sizes<"test_memcpy_avx", sizeof(__m256), 1, 10>(memcpy_avx);
 }
 
 void test_memcpy_sse()
 {
+    iterate_sizes<"test_memcpy_sse", sizeof(__m128), 1, 10>(memcpy_sse);
 }

@@ -6,4 +6,6 @@ add_library(simdcopy INTERFACE)
 
 target_include_directories(simdcopy INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
+include(CTest)
+enable_testing()
 add_subdirectory(tests)
