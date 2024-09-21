@@ -7,31 +7,19 @@
 #include <unordered_map>
 #include <string>
 
-static void test_memcpy_avx();
-static void test_memcpy_sse();
-
-template <const char *Label, size_t BlockSize, size_t Start, size_t End, bool Remainder = false>
-static void iterate_sizes(void (*copyfn)(void *, void *, size_t))
+template <size_t BlockSize, size_t Start, size_t End, bool Aligned>
+static void iterate_memcpy(const std::string &label, const std::function<void *(void *, void *, size_t)> &copyfn)
 {
-    constexpr size_t ArraySize = (Start * BlockSize) + ((Remainder) ? (BlockSize / 2) : 0);
+    constexpr size_t ArraySize = (Start * BlockSize) + ((Aligned) ? 0 : (BlockSize / 2));
+    constexpr size_t CopySize = ((Aligned) ? Start : ArraySize);
     std::array<uint8_t, ArraySize> input;
     std::array<uint8_t, ArraySize> output;
     uint8_t product;
 
     input.fill(1);
-    input.fill(0);
+    output.fill(0);
 
-    copyfn(output.data(), input.data(), ArraySize);
-
-    if constexpr (!Remainder)
-    {
-        iterate_sizes<BlockSize, Start, End, true>();
-    }
-
-    if constexpr (Start < End)
-    {
-        iterate_sizes<BlockSize, Start + 1, End, false>();
-    }
+    copyfn(output.data(), input.data(), CopySize);
 
     product = 1;
     std::for_each(
@@ -43,15 +31,42 @@ static void iterate_sizes(void (*copyfn)(void *, void *, size_t))
         });
     if (product != 1)
     {
-        throw std::runtime_error(std::string(Label) + " failed at size " + std::to_string(ArraySize));
+        throw std::runtime_error(label + " failed at size " + std::to_string(ArraySize));
     }
+
+    if constexpr (Start < End)
+    {
+        iterate_memcpy<BlockSize, Start + 1, End, Aligned>(label, copyfn);
+    }
+}
+
+void test_memcpy_avx()
+{
+    iterate_memcpy<SIMDCOPY_BLOCK_AVX, 1, 10, false>("test_memcpy_avx", memcpy_avx);
+}
+
+void test_memcpy_aligned_avx()
+{
+    iterate_memcpy<sizeof(__m256), 1, 10, true>("test_memcpy_aligned_avx", memcpy_aligned_avx);
+}
+
+void test_memcpy_sse()
+{
+    iterate_memcpy<SIMDCOPY_BLOCK_AVX, 1, 10, false>("test_memcpy_sse", memcpy_sse);
+}
+
+void test_memcpy_aligned_sse()
+{
+    iterate_memcpy<SIMDCOPY_BLOCK_SSE, 1, 10, true>("test_memcpy_aligned_sse", memcpy_aligned_sse);
 }
 
 int main(int argc, const char **argv)
 {
     const std::unordered_map<std::string, std::function<void()>> unit_tests = {
         {"MEMCPY_AVX", test_memcpy_avx},
+        {"MEMCPY_ALIGNED_AVX", test_memcpy_aligned_avx},
         {"MEMCPY_SSE", test_memcpy_sse},
+        {"MEMCPY_ALIGNED_SSE", test_memcpy_aligned_sse},
     };
     int result;
     result = 0;
@@ -69,14 +84,4 @@ int main(int argc, const char **argv)
         }
     }
     return result;
-}
-
-void test_memcpy_avx()
-{
-    iterate_sizes<"test_memcpy_avx", sizeof(__m256), 1, 10>(memcpy_avx);
-}
-
-void test_memcpy_sse()
-{
-    iterate_sizes<"test_memcpy_sse", sizeof(__m128), 1, 10>(memcpy_sse);
 }
