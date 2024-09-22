@@ -13,7 +13,7 @@ else()
     set(COMPILER_FLAGS "/arch:AVX")
 endif()
 else()
-set(COMPILER_FLAGS "-march=native -O3")
+set(COMPILER_FLAGS "-O3 -march=native")
 endif()
 
 add_library(simdcopy INTERFACE)
