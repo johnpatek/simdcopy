@@ -64,14 +64,30 @@ extern "C"
 /**/ #endif
 #endif
 
+#define SIMDCOPY_REMAINING(DEST,SRC,REMAINING)\
+if (REMAINING)\
+{\
+    memcpy(DEST, SRC, REMAINING);\
+}
+
 #ifdef _SIMDCOPY_AVX_
 #define SIMDCOPY_BLOCK_AVX (sizeof(__m256))
+#define SIMDCOPY_AVX(DEST,SRC,BLOCKS) \
+for (size_t offset = 0; offset < BLOCKS; offset++)\
+{\
+    _mm256_storeu_ps((float *)DEST + offset * (SIMDCOPY_BLOCK_AVX / sizeof(float)), _mm256_loadu_ps((float *)SRC + offset * (SIMDCOPY_BLOCK_AVX / sizeof(float))));\
+}
 #else
 #define SIMDCOPY_BLOCK_AVX (1 / 0) // this is defined if AVX is not supported
 #endif
 
 #ifdef _SIMDCOPY_SSE_
 #define SIMDCOPY_BLOCK_SSE (sizeof(__m128))
+#define SIMDCOPY_SSE(DEST,SRC,BLOCKS) \
+for (size_t offset = 0; offset < BLOCKS; offset++)\
+{\
+    _mm_storeu_ps((float *)DEST + offset * (SIMDCOPY_BLOCK_SSE / sizeof(float)), _mm_loadu_ps((float *)SRC + offset * (SIMDCOPY_BLOCK_SSE / sizeof(float))));\
+}
 #else
 #define SIMDCOPY_BLOCK_SSE (1 / 0) // this is defined if SSE is not supported
 #endif
@@ -84,10 +100,7 @@ extern "C"
     {
         void *result = NULL;
 #ifdef _SIMDCOPY_AVX_
-        for (size_t offset = 0; offset < blocks; offset++)
-        {
-            _mm256_storeu_ps((float *)dest + offset * (SIMDCOPY_BLOCK_AVX / sizeof(float)), _mm256_loadu_ps((float *)src + offset * (SIMDCOPY_BLOCK_AVX / sizeof(float))));
-        }
+        SIMDCOPY_AVX(dest, src, blocks)
         result = dest;
 #endif
         return result;
@@ -98,15 +111,9 @@ extern "C"
         void *result = NULL;
 #ifdef _SIMDCOPY_AVX_
         const size_t blocks = count / SIMDCOPY_BLOCK_AVX;
-        const size_t remainder = count % SIMDCOPY_BLOCK_AVX;
-        for (size_t offset = 0; offset < blocks; offset++)
-        {
-            _mm256_storeu_ps((float *)dest + offset * (SIMDCOPY_BLOCK_AVX / sizeof(float)), _mm256_loadu_ps((float *)src + offset * (SIMDCOPY_BLOCK_AVX / sizeof(float))));
-        }
-        if (remainder)
-        {
-            (void)memcpy((uint8_t *)dest + blocks * SIMDCOPY_BLOCK_AVX, (uint8_t *)src + blocks * SIMDCOPY_BLOCK_AVX, remainder);
-        }
+        const size_t remaining = count % SIMDCOPY_BLOCK_AVX;
+        SIMDCOPY_AVX(dest, src, blocks)
+        SIMDCOPY_REMAINING((uint8_t *)dest + blocks * SIMDCOPY_BLOCK_AVX, (uint8_t *)src + blocks * SIMDCOPY_BLOCK_AVX, remaining)
         result = dest;
 #endif
         return result;
@@ -116,10 +123,7 @@ extern "C"
     {
         void *result = NULL;
 #ifdef _SIMDCOPY_SSE_
-        for (size_t offset = 0; offset < blocks; offset++)
-        {
-            _mm_storeu_ps((float *)dest + offset * (SIMDCOPY_BLOCK_SSE / sizeof(float)), _mm_loadu_ps((float *)src + offset * (SIMDCOPY_BLOCK_SSE / sizeof(float))));
-        }
+        SIMDCOPY_SSE(dest, src, blocks)
         result = dest;
 #endif
         return result;
@@ -130,15 +134,9 @@ extern "C"
         void *result = NULL;
 #ifdef _SIMDCOPY_SSE_
         const size_t blocks = count / SIMDCOPY_BLOCK_SSE;
-        const size_t remainder = count % SIMDCOPY_BLOCK_SSE;
-        for (size_t offset = 0; offset < blocks; offset++)
-        {
-            _mm_storeu_ps((float *)dest + offset * (SIMDCOPY_BLOCK_SSE / sizeof(float)), _mm_loadu_ps((float *)src + offset * (SIMDCOPY_BLOCK_SSE / sizeof(float))));
-        }
-        if (remainder)
-        {
-            (void)memcpy((uint8_t *)dest + blocks * SIMDCOPY_BLOCK_SSE, (uint8_t *)src + blocks * SIMDCOPY_BLOCK_SSE, remainder);
-        }
+        const size_t remaining = count % SIMDCOPY_BLOCK_SSE;
+        SIMDCOPY_SSE(dest, src, blocks)
+        SIMDCOPY_REMAINING((uint8_t *)dest + blocks * SIMDCOPY_BLOCK_SSE, (uint8_t *)src + blocks * SIMDCOPY_BLOCK_SSE, remaining);  
         result = dest;
 #endif
         return result;
