@@ -28,3 +28,6 @@ if(SIMDCOPY_TESTS)
     add_test(NAME test_memcpy_sse COMMAND unit MEMCPY_SSE)
     add_test(NAME test_memcpy_aligned_sse COMMAND unit MEMCPY_ALIGNED_SSE)
 endif()
+
+add_executable(benchmark benchmark.cpp)
+target_link_libraries(benchmark simdcopy)
