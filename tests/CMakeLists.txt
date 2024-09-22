@@ -19,6 +19,8 @@ if(SIMDCOPY_TESTS)
         endif()
     endif()
 
+    add_test(NAME test_memcpy_avx512 COMMAND unit MEMCPY_AVX512)
+    add_test(NAME test_memcpy_aligned_avx512 COMMAND unit MEMCPY_ALIGNED_AVX512)
     add_test(NAME test_memcpy_avx COMMAND unit MEMCPY_AVX)
     add_test(NAME test_memcpy_aligned_avx COMMAND unit MEMCPY_ALIGNED_AVX)
     add_test(NAME test_memcpy_sse COMMAND unit MEMCPY_SSE)

@@ -48,10 +48,18 @@ extern "C"
 #include <spe.h>
 #endif
 
+// detect support for AVX512
+#if defined(__AVX512F__)
+#define _SIMDCOPY_AVX512_ 1
+#endif
+
+// detect support for AVX
+#if defined(__AVX__)
+#define _SIMDCOPY_AVX_ 1
+#endif
+
+// detect support for SSE
 #if defined(_MSC_VER)
-/**/ #if defined(__AVX__)
-/**/ #define _SIMDCOPY_AVX_ 1
-/**/ #endif
 /**/ #if (defined(_M_AMD64) || defined(_M_X64))
 /**/ #define _SIMDCOPY_SSE_ 1
 /**/ #endif
@@ -70,9 +78,20 @@ if (REMAINING)\
     memcpy(DEST, SRC, REMAINING);\
 }
 
+#ifdef _SIMDCOPY_AVX512_
+#define SIMDCOPY_BLOCK_AVX512 (sizeof(__m512))
+#define SIMDCOPY_AVX512(DEST, SRC, BLOCKS) \
+for (size_t offset = 0; offset < BLOCKS; offset++)\
+{\
+    _mm512_storeu_ps((float *)DEST + offset * (SIMDCOPY_BLOCK_AVX512 / sizeof(float)), _mm512_loadu_ps((float *)SRC + offset * (SIMDCOPY_BLOCK_AVX512 / sizeof(float))));\
+}
+#else
+#define SIMDCOPY_BLOCK_AVX512 (1 / 0) // this is defined if AVX512 is not supported
+#endif
+
 #ifdef _SIMDCOPY_AVX_
 #define SIMDCOPY_BLOCK_AVX (sizeof(__m256))
-#define SIMDCOPY_AVX(DEST,SRC,BLOCKS) \
+#define SIMDCOPY_AVX(DEST, SRC, BLOCKS) \
 for (size_t offset = 0; offset < BLOCKS; offset++)\
 {\
     _mm256_storeu_ps((float *)DEST + offset * (SIMDCOPY_BLOCK_AVX / sizeof(float)), _mm256_loadu_ps((float *)SRC + offset * (SIMDCOPY_BLOCK_AVX / sizeof(float))));\
@@ -83,7 +102,7 @@ for (size_t offset = 0; offset < BLOCKS; offset++)\
 
 #ifdef _SIMDCOPY_SSE_
 #define SIMDCOPY_BLOCK_SSE (sizeof(__m128))
-#define SIMDCOPY_SSE(DEST,SRC,BLOCKS) \
+#define SIMDCOPY_SSE(DEST, SRC, BLOCKS) \
 for (size_t offset = 0; offset < BLOCKS; offset++)\
 {\
     _mm_storeu_ps((float *)DEST + offset * (SIMDCOPY_BLOCK_SSE / sizeof(float)), _mm_loadu_ps((float *)SRC + offset * (SIMDCOPY_BLOCK_SSE / sizeof(float))));\
@@ -95,6 +114,26 @@ for (size_t offset = 0; offset < BLOCKS; offset++)\
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+    
+    inline void *memcpy_aligned_avx512(void *dest, const void *src, size_t blocks)
+    {
+        void *result = NULL;
+#ifdef _SIMDCOPY_AVX512_
+        SIMDCOPY_AVX512(dest, src, blocks)
+        result = dest;
+#endif
+        return result;
+    }
+
+    inline void *memcpy_avx512(void *dest, const void *src, size_t blocks)
+    {
+        void *result = NULL;
+#ifdef _SIMDCOPY_AVX512_
+        SIMDCOPY_AVX512(dest, src, blocks)
+        result = dest;
+#endif
+        return result;
+    }
 
     inline void *memcpy_aligned_avx(void *dest, const void *src, size_t blocks)
     {

@@ -1,3 +1,25 @@
+/*
+ * Copyright 2024 John R. Patek Sr.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 #include <simdcopy.h>
 
 #include <algorithm>
@@ -40,29 +62,53 @@ static void iterate_memcpy(const std::string &label, const std::function<void *(
     }
 }
 
+void test_memcpy_avx512()
+{
+#ifdef _SIMDCOPY_AVX512_
+    iterate_memcpy<SIMDCOPY_BLOCK_AVX512, 1, 10, false>("test_memcpy_avx512", memcpy_avx512);
+#endif
+}
+
+void test_memcpy_aligned_avx512()
+{
+#ifdef _SIMDCOPY_AVX512_
+    iterate_memcpy<SIMDCOPY_BLOCK_AVX512, 1, 10, true>("test_memcpy_avx512", memcpy_aligned_avx512);
+#endif
+}
+
 void test_memcpy_avx()
 {
+#ifdef _SIMDCOPY_AVX_
     iterate_memcpy<SIMDCOPY_BLOCK_AVX, 1, 10, false>("test_memcpy_avx", memcpy_avx);
+#endif
 }
 
 void test_memcpy_aligned_avx()
 {
+#ifdef _SIMDCOPY_AVX_
     iterate_memcpy<sizeof(__m256), 1, 10, true>("test_memcpy_aligned_avx", memcpy_aligned_avx);
+#endif
 }
 
 void test_memcpy_sse()
 {
+#ifdef _SIMDCOPY_SSE_
     iterate_memcpy<SIMDCOPY_BLOCK_AVX, 1, 10, false>("test_memcpy_sse", memcpy_sse);
+#endif
 }
 
 void test_memcpy_aligned_sse()
 {
+#ifdef _SIMDCOPY_SSE_
     iterate_memcpy<SIMDCOPY_BLOCK_SSE, 1, 10, true>("test_memcpy_aligned_sse", memcpy_aligned_sse);
+#endif
 }
 
 int main(int argc, const char **argv)
 {
     const std::unordered_map<std::string, std::function<void()>> unit_tests = {
+        {"MEMCPY_AVX512", test_memcpy_avx512},
+        {"MEMCPY_ALIGNED_AVX512", test_memcpy_aligned_avx512},
         {"MEMCPY_AVX", test_memcpy_avx},
         {"MEMCPY_ALIGNED_AVX", test_memcpy_aligned_avx},
         {"MEMCPY_SSE", test_memcpy_sse},
